@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyQuiz: Fresh Mint</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo" onclick="Router.to('home')">
+                <span class="logo-icon">✓</span> MyQuiz
+            </div>
+            <div class="nav-menu">
+                <button onclick="Router.to('home')" class="nav-btn" data-page="home">Головна</button>
+                <button onclick="Router.to('history')" class="nav-btn" data-page="history">Результати</button>
+                <button onclick="Router.to('manage')" class="nav-btn" data-page="manage">Керування</button>
+                <button onclick="Builder.startNew()" class="btn-create">Створити</button>
+            </div>
+        </div>
+    </nav>
+
+    <main id="app">
+        <section id="view-home" class="screen active">
+            <div class="container-wide">
+                <h1 class="page-title">Доступні тести</h1>
+                <div id="grid-home" class="grid"></div>
+            </div>
+        </section>
+
+        <section id="view-manage" class="screen">
+            <div class="container-wide">
+                <h1 class="page-title">Мої тести</h1>
+                <div id="grid-manage" class="grid"></div>
+            </div>
+        </section>
+
+        <section id="view-create" class="screen">
+            <div class="container-focus">
+                <div class="builder-header">
+                    <input type="text" id="build-title" class="input-title" placeholder="Назва тесту">
+                    <div class="toggle-wrap">
+                        <label class="switch">
+                            <input type="checkbox" id="build-retake" checked>
+                            <span class="slider round"></span>
+                        </label>
+                        <span class="toggle-label">Дозволити повторне проходження</span>
+                    </div>
+                </div>
+                <div id="build-list"></div>
+                <div class="sticky-footer">
+                    <button onclick="Builder.addQ()" class="btn-ghost">+ Питання</button>
+                    <button onclick="Builder.save()" class="btn-primary">Зберегти тест</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="view-run" class="screen">
+            <div class="progress-bar"><div id="run-bar"></div></div>
+            <div class="container-focus center-y" style="max-width: 900px;"> 
+                <div id="run-card" class="card run-card"></div>
+            </div>
+        </section>
+
+        <section id="view-finish" class="screen">
+            <div class="container-focus center-y">
+                <div class="card center-text" style="text-align:center; width:100%; max-width:500px; padding:40px;">
+                    <div id="res-circle" class="score-circle">0%</div>
+                    <h2 class="finish-title">Вітаємо!</h2>
+                    <p id="res-text" class="finish-sub">Тест завершено</p>
+                    <div class="flex-center">
+                        <button onclick="Results.showLastReview()" class="btn-outline">Детальний звіт</button>
+                        <button onclick="Router.to('home')" class="btn-primary">На головну</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="view-history" class="screen">
+            <div class="container-wide">
+                <h1 class="page-title">Історія проходжень</h1>
+                <div id="history-list"></div>
+            </div>
+        </section>
+
+        <section id="view-review" class="screen">
+            <div class="container-focus">
+                <div class="flex-head">
+                    <button onclick="Router.to('history')" class="btn-text">← До списку</button>
+                    <h2 class="page-title" style="margin:0">Звіт</h2>
+                </div>
+                <div id="review-content"></div>
+            </div>
+        </section>
+    </main>
+
+    <div id="modal-delete" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-icon-bg">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </div>
+            <h3>Видалити цей тест?</h3>
+            <p style="color:#636E72; margin-bottom:24px;">Цю дію неможливо скасувати.</p>
+            <div class="flex-center" style="margin-top:0; gap: 15px;">
+                <button onclick="Home.closeModal()" class="btn-cancel">Скасувати</button>
+                <button onclick="Home.confirmDel()" class="btn-delete">Видалити</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast">Повідомлення</div>
+
+    <script src="js/data.js"></script>
+    <script src="js/router.js"></script>
+    <script src="js/home.js"></script>
+    <script src="js/builder.js"></script>
+    <script src="js/runner.js"></script>
+    <script src="js/results.js"></script>
+    
+    <script>
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            if(t){
+                t.innerText = msg;
+                t.classList.add('show');
+                setTimeout(() => t.classList.remove('show'), 3000);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            Router.to('home');
+        });
+    </script>
+</body>
+</html>
