@@ -6,6 +6,17 @@ export const Storage = {
     saveQuizzes: (list) => {
         localStorage.setItem('mq_quizzes', JSON.stringify(list));
     },
+
+    saveQuiz: (quiz) => {
+        const list = Storage.getQuizzes();
+        const idx = list.findIndex(q => q.id === quiz.id);
+        if (idx >= 0) {
+            list[idx] = quiz;
+        } else {
+            list.push(quiz);
+        }
+        Storage.saveQuizzes(list);
+    },
     
     getResults: () => {
         return JSON.parse(localStorage.getItem('mq_results') || '[]');
@@ -42,7 +53,17 @@ export const Storage = {
             copy.id = 'qz_' + Date.now();
             copy.title += ' (Копія)';
             copy.created = new Date().toISOString();
+            copy.isPinned = false; 
             list.push(copy);
+            Storage.saveQuizzes(list);
+        }
+    },
+
+    toggleQuizPin: (id) => {
+        const list = Storage.getQuizzes();
+        const quiz = list.find(q => q.id === id);
+        if (quiz) {
+            quiz.isPinned = !quiz.isPinned;
             Storage.saveQuizzes(list);
         }
     },
