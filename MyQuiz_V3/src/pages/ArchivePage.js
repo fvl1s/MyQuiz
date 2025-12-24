@@ -19,14 +19,14 @@ export const ArchivePage = {
     toggleSort: () => {
         ArchivePage.state.sort = ArchivePage.state.sort === 'asc' ? 'desc' : 'asc';
         const btn = document.getElementById('sort-btn-archive');
-        if(btn) btn.innerText = ArchivePage.state.sort === 'asc' ? 'AZ' : 'ZA';
+        if (btn) btn.innerText = ArchivePage.state.sort === 'asc' ? 'AZ' : 'ZA';
         ArchivePage.renderList();
     },
 
     renderList: () => {
         const container = document.getElementById('list-archive');
         if (!container) return;
-        
+
         let quizzes = Storage.getQuizzes().filter(q => q.isArchived === true);
 
         if (ArchivePage.state.search) {
@@ -38,39 +38,39 @@ export const ArchivePage = {
                 ? a.title.localeCompare(b.title) 
                 : b.title.localeCompare(a.title);
         });
-        
-        if (!quizzes.length) {
-    container.innerHTML = `
-        <div class="empty-state">
-            <div class="empty-icon">${Icons.archive}</div>
-            <h3 style="font-size:22px; font-weight:800; margin-bottom:8px;">${ArchivePage.state.search ? 'В архіві нічого не знайдено' : 'Архів порожній'}</h3>
-            <p style="color:var(--text-muted); max-width:320px; font-weight:500;">
-                ${ArchivePage.state.search ? 'Спробуйте інше ключове слово.' : 'Заархівовані тести будуть зберігатися тут для відновлення або видалення.'}
-            </p>
-        </div>`;
-    return;
-}
 
-        container.innerHTML = quizzes.map(q => `
-            <div class="quiz-card manage-mode archived-item" style="opacity: 0.85;">
-                <div class="quiz-content" style="padding: 28px;">
-                    <div class="quiz-header" style="margin-bottom: 20px;">
-                        <h3 class="quiz-title" style="color: var(--text-secondary);">${q.title}</h3>
-                        <div class="card-status expired" style="margin: 0;">${Icons.lock} В архіві</div>
+        if (!quizzes.length) {
+            container.innerHTML = `
+                <div class="archive-empty-zen">
+                    <div class="empty-icon">${Icons.archive}</div>
+                    <h3>${ArchivePage.state.search ? 'Нічого не знайдено' : 'Архів порожній'}</h3>
+                    <p>Тут з’являться тести, які ви вирішите тимчасово приховати.</p>
+                </div>`;
+            return;
+        }
+
+        container.innerHTML = quizzes.map((q, index) => `
+            <div class="quiz-card manage-mode archive-card" style="animation-delay: ${index * 0.05}s">
+                <div class="quiz-content card-content-padded">
+                    <div class="quiz-header card-header-row">
+                        <div class="header-main">
+                            <div class="card-status expired status-label-inline">
+                                ${Icons.lock} Архівний
+                            </div>
+                            <h3 class="quiz-title card-title-text">${q.title}</h3>
+                        </div>
+                        <button onclick="App.pages.archive.removeQuiz('${q.id}')" class="btn-icon-danger" title="Видалити назавжди">
+                            ${Icons.trash}
+                        </button>
                     </div>
-                    
-                    <div class="quiz-meta" style="padding-top: 20px; border-top: 1px solid var(--border);">
+                    <div class="quiz-meta card-meta-bottom">
                         <div class="meta-item">${Icons.book} <span>${q.questions.length} питань</span></div>
-                        <div class="meta-item">${Icons.calendar} <span>Створено: ${Storage.formatDate(q.created)}</span></div>
+                        <div class="meta-item">${Icons.calendar} <span>${Storage.formatDate(q.created)}</span></div>
                     </div>
                 </div>
-                
-                <div class="manage-footer-grid">
-                    <button onclick="App.pages.archive.restore('${q.id}')" class="manage-tile" style="grid-column: span 1;">
-                        ${Icons.check} <span>Відновити</span>
-                    </button>
-                    <button onclick="App.pages.archive.delete('${q.id}')" class="manage-tile" style="grid-column: span 1; color: var(--danger);">
-                        ${Icons.trash} <span>Видалити</span>
+                <div class="quiz-footer footer-no-padding">
+                    <button onclick="App.pages.archive.restore('${q.id}')" class="btn-restore-full">
+                        ${Icons.check} Відновити тест
                     </button>
                 </div>
             </div>`).join('');
@@ -78,16 +78,18 @@ export const ArchivePage = {
 
     restore: (id) => {
         const q = Storage.getQuizById(id);
+        if (!q) return;
         q.isArchived = false;
+        q.isClosed = false;
         Storage.saveQuiz(q);
         Toast.show('Тест відновлено');
         ArchivePage.renderList();
     },
 
-    delete: (id) => {
-        App.showConfirm('Видалити тест з архіву назавжди? Цю дію неможливо скасувати.', () => {
+    removeQuiz: (id) => {
+        App.showConfirm('Видалити цей тест назавжди? Цю дію неможливо скасувати.', () => {
             Storage.deleteQuiz(id);
-            Toast.show('Видалено остаточно');
+            Toast.show('Тест видалено остаточно');
             ArchivePage.renderList();
         });
     }

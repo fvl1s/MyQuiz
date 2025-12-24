@@ -68,8 +68,44 @@ export const Storage = {
         }
     },
 
+    exportQuiz: (id) => {
+        const quiz = Storage.getQuizById(id);
+        if (!quiz) return;
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(quiz));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", quiz.title + ".json");
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    },
+
+    importQuiz: (file) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const quiz = JSON.parse(e.target.result);
+                    quiz.id = 'qz_' + Date.now();
+                    quiz.isArchived = false;
+                    quiz.isPinned = false;
+                    Storage.saveQuiz(quiz);
+                    resolve(quiz);
+                } catch (err) {
+                    reject(err);
+                }
+            };
+            reader.readAsText(file);
+        });
+    },
+
     formatDate: (iso) => {
         const d = new Date(iso);
-        return d.toLocaleDateString('uk-UA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        return d.toLocaleDateString('uk-UA', { 
+            day: 'numeric', 
+            month: 'short', 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
     }
 };

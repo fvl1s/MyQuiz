@@ -1,75 +1,127 @@
 import { Icons } from '../utils/icons.js';
+import { Toast } from '../utils/toast.js';
 
 export const PlansPage = {
+    plans: [
+        {
+            id: 'basic',
+            name: 'Basic Student',
+            price: '0',
+            period: 'назавжди',
+            desc: 'Оптимальний вибір для ознайомлення з платформою та базового навчання.',
+            features: [
+                'Доступ до публічних тестів',
+                'Історія останніх 10 результатів',
+                'Базова статистика успішності',
+                'Спільнота студентів'
+            ],
+            buttonText: 'Ваш поточний план',
+            isPopular: false,
+            isCurrent: true
+        },
+        {
+            id: 'pro',
+            name: 'PRO Student',
+            price: '149',
+            period: 'на місяць',
+            desc: 'Максимальна ефективність завдяки глибокій аналітиці та персоналізації.',
+            features: [
+                'Необмежена історія результатів',
+                'Детальний аналіз помилок',
+                'Експорт сертифікатів у PDF',
+                'Порівняння з успішністю групи',
+                'Пріоритетний доступ до функцій'
+            ],
+            buttonText: 'Активувати PRO',
+            isPopular: true,
+            isCurrent: false
+        },
+        {
+            id: 'leader',
+            name: 'Group Leader',
+            price: '499',
+            period: 'на місяць',
+            desc: 'Розширені інструменти для моніторингу та управління освітніми процесами.',
+            features: [
+                'Всі можливості плану PRO',
+                'Створення власних тестів',
+                'Аналітика всієї групи',
+                'Експорт звітів у CSV/Excel',
+                'Пряма підтримка 24/7'
+            ],
+            buttonText: 'Зв\'язатися з нами',
+            isPopular: false,
+            isCurrent: false
+        }
+    ],
+
     render: () => {
         const container = document.getElementById('plans-content');
         if (!container) return;
 
-        const check = `<span class="check-icon">✓</span>`;
+        const plansHtml = PlansPage.plans.map(plan => `
+            <div class="plan-card-zen ${plan.isPopular ? 'popular' : ''} ${plan.isCurrent ? 'current' : ''}">
+                ${plan.isPopular ? `<div class="plan-badge-zen">${Icons.shield} Рекомендовано</div>` : ''}
+                <div class="plan-header-zen">
+                    <h3>${plan.name}</h3>
+                    <div class="plan-price-wrap">
+                        <span class="currency">₴</span>
+                        <span class="amount">${plan.price}</span>
+                        <span class="period">/ ${plan.period}</span>
+                    </div>
+                    <p class="plan-desc-zen">${plan.desc}</p>
+                </div>
+                <div class="plan-body-zen">
+                    <ul class="plan-features-zen">
+                        ${plan.features.map(f => `<li>${Icons.check} <span>${f}</span></li>`).join('')}
+                    </ul>
+                </div>
+                <div class="plan-footer-zen">
+                    <button class="${plan.isPopular ? 'btn-primary' : 'btn-secondary'}" 
+                            onclick="App.pages.plans.selectPlan('${plan.id}')" 
+                            ${plan.isCurrent ? 'disabled' : ''}>
+                        ${plan.isCurrent ? Icons.check + ' Поточний план' : plan.buttonText}
+                    </button>
+                </div>
+            </div>
+        `).join('');
 
         container.innerHTML = `
-            <div style="text-align: center; max-width: 700px; margin: 0 auto 50px auto; animation: fadeIn 0.5s ease-out;">
-                <h1 style="font-size:36px; margin-bottom: 16px;">Інвестуйте у своє навчання</h1>
-                <p style="color: var(--text-secondary); font-size: 18px; line-height:1.6;">
-                    Оберіть тарифний план, що відповідає вашим амбіціям. Розблокуйте повний потенціал платформи MyQuiz.
-                </p>
-            </div>
-
-            <div class="plans-grid">
-                <div class="plan-item">
-                    <div class="plan-name">Basic Student</div>
-                    <div class="plan-cost">₴0</div>
-                    <div class="plan-period">назавжди</div>
-                    <p class="plan-desc">Базовий доступ до проходження відкритих тестів.</p>
-                    
-                    <ul class="plan-features">
-                        <li>${check} Доступ до публічних тестів</li>
-                        <li>${check} Історія останніх 10 результатів</li>
-                        <li>${check} Базова статистика</li>
-                    </ul>
-                    
-                    <button class="btn-secondary" style="width:100%; justify-content:center;">Ваш поточний план</button>
+            <div class="plans-container-pro">
+                <div class="plans-hero-zen">
+                    <h1>Інвестуйте у свою освіту</h1>
+                    <p>Оберіть план, який допоможе вам досягти академічних вершин швидше та ефективніше.</p>
                 </div>
-
-                <div class="plan-item popular">
-                    <div class="plan-tag">Рекомендовано</div>
-                    <div class="plan-name" style="color:var(--primary);">PRO Student</div>
-                    <div class="plan-cost">₴149</div>
-                    <div class="plan-period">на місяць</div>
-                    <p class="plan-desc">Для тих, хто прагне максимальної ефективності.</p>
-                    
-                    <ul class="plan-features">
-                        <li>${check} <strong>Необмежена</strong> історія результатів</li>
-                        <li>${check} Детальний аналіз помилок</li>
-                        <li>${check} Порівняння з успішністю групи</li>
-                        <li>${check} Експорт сертифікатів PDF</li>
-                        <li>${check} Темна тема інтерфейсу</li>
-                    </ul>
-                    
-                    <button class="btn-primary" style="width:100%; justify-content:center; font-size:16px; padding:16px;">Спробувати PRO</button>
+                <div class="plans-grid-pro">
+                    ${plansHtml}
                 </div>
-
-                <div class="plan-item">
-                    <div class="plan-name">Group Leader</div>
-                    <div class="plan-cost">₴499</div>
-                    <div class="plan-period">на місяць</div>
-                    <p class="plan-desc">Спеціальні можливості для кураторів та викладачів.</p>
-                    
-                    <ul class="plan-features">
-                        <li>${check} Всі можливості PRO</li>
-                        <li>${check} Створення власних тестів</li>
-                        <li>${check} Аналітика успішності групи</li>
-                        <li>${check} Експорт звітів у CSV/Excel</li>
-                        <li>${check} Пріоритетна підтримка</li>
-                    </ul>
-                    
-                    <button class="btn-secondary" style="width:100%; justify-content:center;">Зв'язатись з нами</button>
+                <div class="plans-extra-zen">
+                    <div class="extra-card-zen">
+                        <div class="extra-icon-zen">${Icons.calendar}</div>
+                        <div class="extra-text-zen">
+                            <h4>Річна підписка</h4>
+                            <p>Заощаджуйте до 20% при оплаті за рік одним платежем.</p>
+                        </div>
+                        <button class="btn-secondary" onclick="Toast.show('Функція скоро з\\'явиться')">Дізнатись більше</button>
+                    </div>
+                    <div class="extra-card-zen">
+                        <div class="extra-icon-zen">${Icons.book}</div>
+                        <div class="extra-text-zen">
+                            <h4>Для навчальних закладів</h4>
+                            <p>Отримайте спеціальні умови для цілих факультетів та університетів.</p>
+                        </div>
+                        <button class="btn-secondary" onclick="Toast.show('Запит надіслано')">Запитати прайс</button>
+                    </div>
                 </div>
-            </div>
-            
-            <div style="text-align:center; margin-top:60px; color:var(--text-muted); font-size:14px;">
-                Потрібна допомога з вибором? <a href="#" style="color:var(--primary); text-decoration:none;">Напишіть нам</a>
             </div>
         `;
+    },
+
+    selectPlan: (id) => {
+        if (id === 'leader') {
+            window.open('mailto:sales@myquiz.pro');
+        } else {
+            Toast.show('Перехід до платіжної системи...');
+        }
     }
 };

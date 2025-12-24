@@ -8,61 +8,82 @@ import { SettingsPage } from './src/pages/SettingsPage.js';
 import { HelpPage } from './src/pages/HelpPage.js';
 import { ArchivePage } from './src/pages/ArchivePage.js';
 import { Icons } from './src/utils/icons.js';
+import { Toast } from './src/utils/toast.js';
 
 export class App {
     constructor() {
         this.appContainer = document.getElementById('app-content');
         this.pages = {
-            home: HomePage,
-            manage: ManagePage,
-            editor: EditorPage,
-            analytics: AnalyticsPage,
-            quiz: QuizPage,
-            plans: PlansPage,
-            settings: SettingsPage,
-            help: HelpPage,
-            archive: ArchivePage
+            home: HomePage, manage: ManagePage, editor: EditorPage,
+            analytics: AnalyticsPage, quiz: QuizPage, plans: PlansPage,
+            settings: SettingsPage, help: HelpPage, archive: ArchivePage
         };
         
         window.onpopstate = (event) => {
-            if (event.state) this.render(event.state.page);
-            else this.render('home');
+            const page = event.state ? event.state.page : 'home';
+            this.render(page);
         };
 
+        this.initTheme();
         this.initProfile();
+        this.initIcons();
         this.initGlobalListeners();
 
-        const currentPath = window.location.search.replace('?page=', '') || 'home';
-        this.render(currentPath);
+        const params = new URLSearchParams(window.location.search);
+        const page = params.get('page') || 'home';
+        const id = params.get('id');
+
+        if (page === 'run' && id) {
+            this.pages.quiz.init(id);
+        } else {
+            this.render(page);
+        }
+    }
+
+    initTheme() {
+        const theme = localStorage.getItem('mq_theme') || 'light';
+        const accent = localStorage.getItem('mq_accent_color');
+        
+        document.documentElement.setAttribute('data-theme', theme);
+        if (accent) {
+            document.documentElement.style.setProperty('--primary', accent);
+        }
     }
 
     initProfile() {
-        if (!localStorage.getItem('mq_user_name')) {
-            localStorage.setItem('mq_user_name', 'Вадим Голубков');
-        }
-        const name = localStorage.getItem('mq_user_name');
+        const name = localStorage.getItem('mq_user_name') || 'Вадим Голубков';
         const avatar = localStorage.getItem('mq_user_avatar');
         const nameEl = document.querySelector('.sidebar .user-name');
         const avatarEl = document.querySelector('.sidebar .user-avatar img');
-
         if(nameEl) nameEl.innerText = name;
-        if(avatarEl) {
-            avatarEl.src = avatar || `https://ui-avatars.com/api/?name=${encodeURI(name)}&background=0f172a&color=fff`;
+        if(avatarEl) avatarEl.src = avatar || `https://ui-avatars.com/api/?name=${encodeURI(name)}&background=0f172a&color=fff`;
+    }
+
+    initIcons() {
+        const iconMapping = {
+            'icon-home': Icons.home, 'icon-analytics': Icons.analytics,
+            'icon-plus': Icons.plus, 'icon-manage': Icons.manage,
+            'icon-archive': Icons.archive, 'icon-plans': Icons.chart,
+            'icon-help': Icons.help, 'icon-settings': Icons.settings
+        };
+        for (const [id, svg] of Object.entries(iconMapping)) {
+            const el = document.getElementById(id);
+            if (el) el.innerHTML = svg;
         }
     }
 
     initGlobalListeners() {
         document.addEventListener('click', (e) => {
-            if (!e.target.closest('.menu-btn') && !e.target.closest('.dropdown-menu')) {
-                document.querySelectorAll('.dropdown-menu').forEach(menu => menu.classList.remove('show'));
+            if (!e.target.closest('.menu-container')) {
+                document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
             }
         });
     }
 
-    route(pageName) {
-        if (window.location.search !== `?page=${pageName}`) {
-            window.history.pushState({ page: pageName }, '', `?page=${pageName}`);
-        }
+    route(pageName, id = null) {
+        let url = `?page=${pageName}`;
+        if (id) url += `&id=${id}`;
+        window.history.pushState({ page: pageName, id: id }, '', url);
         this.render(pageName);
     }
 
@@ -72,49 +93,143 @@ export class App {
             if (btn.getAttribute('onclick')?.includes(`'${pageName}'`)) btn.classList.add('active');
         });
 
-        const searchPlaceholder = "Пошук тестів за назвою...";
-
         switch(pageName) {
             case 'home':
                 this.renderTemplate(`
-                    <div class="page-header sticky">
+                    <div class="page-header sticky" style="border-bottom: none;">
                         <h1>Огляд тестів</h1>
                         <div class="header-actions">
-                            <input type="text" class="search-input" placeholder="${searchPlaceholder}" oninput="App.pages.home.search(this.value)">
-                            <button class="btn-secondary" onclick="App.pages.home.toggleSort()" id="sort-btn-home">AZ</button>
-                            <button class="btn-primary" onclick="App.route('create')">${Icons.plus} Створити тест</button>
+                            <div style="position: relative; width: 320px;">
+                                <input type="text" class="form-control" placeholder="Пошук тестів..." oninput="App.pages.home.search(this.value)" style="height: 48px; border-radius: 14px; padding-left: 44px; background: var(--bg-body);">
+                                <div style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-muted);">${Icons.search}</div>
+                            </div>
+                            <button class="btn-secondary" onclick="App.pages.home.toggleSort()" id="sort-btn-home" style="height: 48px; min-width: 54px;">AZ</button>
+                            <button class="btn-primary" onclick="App.route('create')" style="height: 48px;">${Icons.plus} Створити</button>
                         </div>
                     </div>
-                    <div class="content-body">
-                        <div id="list-home" class="quiz-grid"></div>
-                    </div>
+                    <div class="content-body" style="padding-top: 0;"><div id="list-home" class="quiz-grid" style="margin-top: 24px;"></div></div>
                 `);
                 HomePage.render();
                 break;
 
+            case 'run':
+                this.renderTemplate(`
+                    <div class="content-body" style="display:flex; align-items:center; justify-content:center; min-height:100vh; padding:20px;">
+                        <div id="run-start-card"></div>
+                        <div id="run-process" class="hidden" style="width:100%; max-width:800px;">
+                            <div class="card" style="padding:40px; border-radius:32px; position:relative;">
+                                <div id="run-timer-container" class="hidden" style="position:absolute; top:40px; right:40px; font-weight:800; font-size:18px; color:var(--primary);">00:00</div>
+                                <div style="margin-bottom:32px;">
+                                    <div style="display:flex; justify-content:space-between; margin-bottom:12px; font-size:13px; font-weight:700; color:var(--text-muted);">
+                                        <span>ПИТАННЯ <span id="run-current">1</span> З <span id="run-total">1</span></span>
+                                    </div>
+                                    <div style="height:6px; background:var(--bg-body); border-radius:10px; overflow:hidden;">
+                                        <div id="run-progress" style="height:100%; width:0%; background:var(--primary); transition:0.3s;"></div>
+                                    </div>
+                                </div>
+                                <div id="run-card-content"></div>
+                                <div id="run-actions" style="margin-top:40px; display:flex; gap:16px; justify-content:flex-end;"></div>
+                            </div>
+                        </div>
+                    </div>
+                `);
+                break;
+
+            case 'finish':
+                this.renderTemplate(`
+                    <div class="content-body" style="display:flex; align-items:center; justify-content:center; min-height:100vh;">
+                        <div class="run-card-wide" style="text-align:center;">
+                            <div style="font-size:64px; margin-bottom:24px;">🏆</div>
+                            <h1 style="font-size:32px; font-weight:900; margin-bottom:8px;">Тест завершено!</h1>
+                            <p style="color:var(--text-secondary); margin-bottom:40px;">Ваші результати успішно збережені в системі.</p>
+                            <div style="background:var(--bg-body); padding:32px; border-radius:24px; margin-bottom:40px;">
+                                <div id="res-score" style="font-size:56px; font-weight:900; color:var(--primary); line-height:1;">0%</div>
+                                <div id="res-info" style="margin-top:12px; font-weight:700; color:var(--text-muted);">0 з 0 балів</div>
+                            </div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                                <button class="btn-secondary" onclick="App.route('home')" style="height:56px;">На головну</button>
+                                <button class="btn-primary" onclick="App.route('analytics')" style="height:56px;">Аналітика</button>
+                            </div>
+                        </div>
+                    </div>
+                `);
+                break;
+            
             case 'manage':
+                this.renderTemplate(`<div class="page-header sticky"><h1>Керування</h1><div class="header-actions"><div style="position:relative; width:320px;"><input type="text" class="form-control" placeholder="Пошук тестів..." oninput="App.pages.manage.search(this.value)" style="height:48px; border-radius:14px; padding-left:44px; background:var(--bg-body);"><div style="position:absolute; left:16px; top:50%; transform:translateY(-50%); color:var(--text-muted);">${Icons.search}</div></div><button class="btn-secondary" onclick="App.pages.manage.toggleSort()" id="sort-btn-manage" style="height:48px; min-width:54px;">AZ</button></div></div><div class="content-body"><div id="list-manage" class="quiz-grid" style="margin-top:24px;"></div></div>`);
+                ManagePage.render();
+                break;
+
+            case 'create':
+                EditorPage.render();
+                break;
+
+            case 'analytics':
                 this.renderTemplate(`
                     <div class="page-header sticky">
-                        <h1>Керування</h1>
+                        <div class="header-left">
+                            <h1>Аналітика</h1>
+                            <div id="ana-breadcrumbs" class="analytics-breadcrumb" style="font-size: 14px; font-weight: 600; color: var(--text-secondary);"></div>
+                        </div>
                         <div class="header-actions">
-                            <input type="text" class="search-input" placeholder="${searchPlaceholder}" oninput="App.pages.manage.search(this.value)">
-                            <button class="btn-secondary" onclick="App.pages.manage.toggleSort()" id="sort-btn-manage">AZ</button>
+                            <div style="position: relative; width: 280px;" id="ana-search-box">
+                                <input type="text" class="form-control" placeholder="Пошук..." oninput="App.pages.analytics.search(this.value)" style="height: 44px; border-radius: 12px; padding-left: 40px; background: var(--bg-body);">
+                                <div style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted);">${Icons.search}</div>
+                            </div>
+                            <button id="ana-main-action-btn" class="btn-primary" style="height: 44px; padding: 0 20px;">
+                                ${Icons.link} Експорт результатів
+                            </button>
                         </div>
                     </div>
                     <div class="content-body">
-                        <div id="list-manage" class="quiz-grid"></div>
+                        <div id="ana-chart-container" style="height:300px; margin-bottom:32px;"><canvas id="globalChart"></canvas></div>
+                        <div id="ana-view-general" class="table-card">
+                            <table class="ana-table">
+                                <thead>
+                                    <tr>
+                                        <th class="text-left">Назва тесту</th>
+                                        <th class="text-center">Спроб</th>
+                                        <th class="text-center">Сер. успішність</th>
+                                        <th class="text-right">Дії</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ana-list-general"></tbody>
+                            </table>
+                        </div>
+                        <div id="ana-view-quiz" class="table-card hidden"></div>
+                        <div id="ana-view-result" class="hidden"></div>
                     </div>
                 `);
-                ManagePage.render();
+                AnalyticsPage.render();
                 break;
-            
+
+            case 'settings':
+                this.renderTemplate(`
+                    <div class="page-header sticky">
+                        <h1>Налаштування профілю</h1>
+                    </div>
+                    <div class="content-body" id="settings-content"></div>
+                `);
+                setTimeout(() => { if (typeof SettingsPage !== 'undefined') SettingsPage.render(); }, 0);
+                break;
+            case 'plans':
+                this.renderTemplate(`<div class="page-header sticky"><h1>Тарифні плани</h1></div><div class="content-body" id="plans-content"></div>`);
+                setTimeout(() => PlansPage.render(), 0);
+                break;
+            case 'help':
+                this.renderTemplate(`<div class="page-header sticky"><h1>Центр підтримки</h1></div><div class="content-body" id="help-content"></div>`);
+                setTimeout(() => HelpPage.render(), 0);
+                break;
             case 'archive':
                 this.renderTemplate(`
                     <div class="page-header sticky">
-                        <h1>Архів тестів</h1>
+                        <h1>Архів</h1>
                         <div class="header-actions">
-                            <input type="text" class="search-input" placeholder="Пошук в архіві..." oninput="App.pages.archive.search(this.value)">
-                            <button class="btn-secondary" onclick="App.pages.archive.toggleSort()" id="sort-btn-archive">AZ</button>
+                            <div style="position:relative; width:320px;">
+                                <input type="text" class="form-control" placeholder="Пошук тестів..." oninput="App.pages.archive.search(this.value)" style="height:48px; border-radius:14px; padding-left:44px; background:var(--bg-body);">
+                                <div style="position:absolute; left:16px; top:50%; transform:translateY(-50%); color:var(--text-muted);">${Icons.search}</div>
+                            </div>
+                            <button class="btn-secondary" onclick="App.pages.archive.toggleSort()" id="sort-btn-archive" style="height:48px; min-width:54px;">AZ</button>
                         </div>
                     </div>
                     <div class="content-body">
@@ -122,153 +237,6 @@ export class App {
                     </div>
                 `);
                 ArchivePage.render();
-                break;
-
-            case 'analytics':
-    this.renderTemplate(`
-        <div class="page-header sticky">
-            <h1>Аналітика результатів</h1>
-            <div class="header-actions">
-                <input type="text" class="search-input" placeholder="Пошук тестів..." oninput="App.pages.analytics.search(this.value)">
-                <button class="btn-secondary" onclick="App.pages.analytics.toggleSort()" id="sort-btn-analytics">AZ</button>
-                <button class="btn-primary" onclick="App.pages.analytics.exportGlobalCSV()" style="width: auto; padding: 0 20px;">
-                    ${Icons.link} Експорт
-                </button>
-            </div>
-        </div>
-        <div class="content-body" style="max-width: 1200px;">
-            <div id="ana-stats-grid" class="stats-overview-grid"></div>
-            <div id="ana-breadcrumbs" class="analytics-breadcrumb" style="margin-top: 32px;"></div>
-            
-            <div id="ana-view-general" class="table-card" style="animation: fadeUp 0.4s ease-out;">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Тест</th>
-                            <th style="text-align: center;">Студентів</th>
-                            <th style="text-align: center;">Сер. успішність</th>
-                            <th style="text-align: center;">Останній запис</th>
-                            <th style="text-align: right;">Деталі</th>
-                        </tr>
-                    </thead>
-                    <tbody id="ana-list-general"></tbody>
-                </table>
-            </div>
-            
-            <div id="ana-view-quiz" class="table-card hidden">
-                </div>
-            <div id="ana-view-result" class="hidden">
-                <div id="ana-result-content" style="max-width:800px; margin:0 auto;"></div>
-            </div>
-        </div>
-    `);
-    AnalyticsPage.render();
-    break;
-
-            case 'create':
-                this.renderTemplate(`
-                    <div class="page-header sticky">
-                        <h1 id="editor-heading">Конструктор</h1>
-                        <div class="header-actions">
-                            <button class="btn-secondary" onclick="App.route('manage')">Скасувати</button>
-                            <button class="btn-primary" onclick="App.pages.editor.save()">${Icons.check} Зберегти тест</button>
-                        </div>
-                    </div>
-                    <div class="content-body" style="max-width: 1000px;">
-                        <div class="card" style="margin-bottom: 32px; border-radius: 28px; padding: 40px;">
-                            <div class="form-group"><label class="form-label">Назва тесту</label><input type="text" id="build-title" class="form-control" placeholder="Наприклад: Модульна контрольна робота №1"></div>
-                            <div class="form-group"><label class="form-label">Опис для студентів</label><textarea id="build-desc" class="form-control" placeholder="Про що цей тест?" style="min-height:100px;"></textarea></div>
-                            <div class="settings-grid">
-                                <div class="switch-group"><label class="switch"><input type="checkbox" id="check-timer" onchange="App.pages.editor.toggleTimer(this)"><span class="slider"></span></label><span class="switch-text">Обмежити час</span></div>
-                                <div class="switch-group"><label class="switch"><input type="checkbox" id="check-deadline" onchange="App.pages.editor.toggleDeadline(this)"><span class="slider"></span></label><span class="switch-text">Дедлайн проходження</span></div>
-                                <div class="switch-group"><label class="switch"><input type="checkbox" id="check-retake"><span class="slider"></span></label><span class="switch-text">Перескладання</span></div>
-                                <div class="switch-group"><label class="switch"><input type="checkbox" id="check-answers"><span class="slider"></span></label><span class="switch-text">Показати відповіді</span></div>
-                                <div class="switch-group"><label class="switch"><input type="checkbox" id="check-backtracking"><span class="slider"></span></label><span class="switch-text">Повернення назад</span></div>
-                                <div class="switch-group"><label class="switch"><input type="checkbox" id="check-leaderboard"><span class="slider"></span></label><span class="switch-text">Таблиця лідерів</span></div>
-                            </div>
-                            <div id="timer-block" class="hidden" style="margin-top:24px; display:flex; align-items:center; gap:12px; background:var(--bg-body); padding:20px; border-radius:20px; border:1px solid var(--border);">
-                                <span style="font-weight:700;">Ліміт:</span>
-                                <input type="text" id="time-h" class="form-control" placeholder="00" oninput="App.pages.editor.validateTime(this)" style="width:70px; text-align:center;"> <span>год</span>
-                                <input type="text" id="time-m" class="form-control" placeholder="30" oninput="App.pages.editor.validateTime(this)" style="width:70px; text-align:center;"> <span>хв</span>
-                            </div>
-                            <div id="deadline-block" class="hidden" style="margin-top:24px; background:var(--bg-body); padding:20px; border-radius:20px; border:1px solid var(--border);">
-                                <label class="form-label">Приймати відповіді до:</label>
-                                <input type="datetime-local" id="deadline-input" class="form-control" style="max-width:300px;">
-                            </div>
-                        </div>
-                        <div id="build-questions"></div>
-                        <div style="text-align:center; margin-top: 40px; padding-bottom: 80px;"><button class="btn-dashed" onclick="App.pages.editor.addQuestion()">${Icons.plus} Додати запитання</button></div>
-                    </div>
-                `);
-                EditorPage.loadData();
-                break;
-
-            case 'run':
-                this.renderTemplate(`
-                    <div id="run-start-card" class="content-body" style="max-width: 500px; margin-top: 80px; text-align: center;">
-                        <div class="card" style="border-radius: 32px; padding: 48px;">
-                            <div style="width:80px; height:80px; background:var(--primary-light); color:var(--primary); border-radius:24px; display:flex; align-items:center; justify-content:center; font-size:32px; margin:0 auto 24px auto;">🚀</div>
-                            <h1 id="run-title" style="margin-bottom:12px;">Назва</h1>
-                            <p id="run-info-meta" style="color:var(--text-muted); margin-bottom:32px; font-weight: 500;"></p>
-                            <input type="text" id="run-name" class="form-control" placeholder="Введіть ваше ім'я" style="margin-bottom:24px; text-align:center; height: 56px; font-size: 16px;">
-                            <button class="btn-primary" onclick="App.pages.quiz.start()" style="height: 56px; font-size: 16px;">Почати проходження</button>
-                        </div>
-                    </div>
-                    <div id="run-process" class="hidden content-body" style="max-width: 750px;">
-                        <div class="run-header">
-                            <div><div style="font-size:20px; font-weight:700;"><span id="run-current">1</span> / <span id="run-total">10</span></div></div>
-                            <div id="run-timer-container" class="timer-pill hidden">00:00:00</div>
-                        </div>
-                        <div class="progress-container"><div id="run-progress" class="progress-bar" style="width:0%"></div></div>
-                        <div id="run-card-content" class="card" style="min-height: 300px; border-radius: 32px; margin-top: 32px; padding: 40px;"></div>
-                        <div id="run-actions" style="margin-top: 32px; display: flex; justify-content: flex-end; gap: 16px;"></div>
-                    </div>
-                `);
-                break;
-
-            case 'finish':
-                this.renderTemplate(`
-                    <div class="content-body" style="max-width: 480px; margin-top: 60px; text-align: center;">
-                        <div class="card" style="border-radius: 40px; padding: 60px;">
-                            <div style="font-size: 72px; margin-bottom: 16px;">🎉</div>
-                            <h2 id="res-msg">Тест завершено!</h2>
-                            <div id="res-score" class="finish-score">0%</div>
-                            <p id="res-info" style="color:var(--text-muted); margin-bottom:40px; font-size:16px;">0 з 0 правильних</p>
-                            <div id="finish-actions" style="display:grid; gap:12px;"></div>
-                        </div>
-                    </div>
-                `);
-                break;
-
-            case 'review':
-                this.renderTemplate(`
-                    <div class="page-header sticky"><h1>Робота над помилками</h1><button class="btn-secondary" onclick="App.route('home')">Закрити</button></div>
-                    <div class="content-body" style="max-width: 800px;"><div id="review-content"></div></div>
-                `);
-                break;
-
-            case 'help':
-                this.renderTemplate(`
-                    <div class="page-header sticky"><h1>Центр підтримки</h1><button class="btn-secondary" onclick="window.open('mailto:support@univ.edu')">Зв'язатись з нами</button></div>
-                    <div class="content-body" id="help-content"></div>
-                `);
-                HelpPage.render();
-                break;
-
-            case 'settings':
-                this.renderTemplate(`
-                    <div class="page-header sticky"><h1>Налаштування</h1></div>
-                    <div class="content-body" id="settings-content"></div>
-                `);
-                SettingsPage.render();
-                break;
-
-            case 'plans':
-                this.renderTemplate(`
-                    <div class="page-header sticky"><h1>Тарифні плани</h1></div>
-                    <div class="content-body" id="plans-content"></div>
-                `);
-                PlansPage.render();
                 break;
         }
     }
@@ -287,15 +255,20 @@ export class App {
     }
 
     showInfo(title, text) {
-    const modal = document.getElementById('info-modal');
-    const titleEl = document.getElementById('info-title');
-    const descEl = document.getElementById('info-desc');
-    
-    if(titleEl) titleEl.innerText = title;
-    if(descEl) descEl.innerHTML = text ? text.replace(/\n/g, '<br>') : 'Опис відсутній.';
-    
-    modal.classList.remove('hidden');
-}
+        const modal = document.getElementById('info-modal');
+        const box = modal.querySelector('.modal-box');
+        
+        box.innerHTML = `
+            <div class="info-modal-icon">${Icons.info}</div>
+            <h3 id="info-title" style="word-break: break-word;">${title}</h3>
+            <div style="max-height: 300px; overflow-y: auto; margin-bottom: 24px;">
+                <p id="info-desc" style="word-break: break-word; overflow-wrap: anywhere; white-space: pre-wrap; color: var(--text-secondary); line-height: 1.6; margin: 0;">${text ? text.replace(/\n/g, '<br>') : 'Опис відсутній.'}</p>
+            </div>
+            <button onclick="document.getElementById('info-modal').classList.add('hidden')" class="modal-btn-full">Зрозуміло</button>
+        `;
+        
+        modal.classList.remove('hidden');
+    }
 }
 
 const myApp = new App();
