@@ -366,6 +366,18 @@ export const QuizPage = {
         const color = pct >= 80 ? '#10b981' : (pct >= 50 ? '#f59e0b' : '#ef4444');
         const bg = pct >= 80 ? '#ecfdf5' : (pct >= 50 ? '#fffbeb' : '#fef2f2');
         const msg = pct >= 80 ? 'Чудовий результат!' : (pct >= 50 ? 'Непогано!' : 'Треба ще попрацювати.');
+        
+        const shareBtn = `
+            <button class="btn-secondary" onclick="App.pages.quiz.shareResult(${pct})" style="height:56px; width:56px; border-radius: 16px; display:flex; align-items:center; justify-content:center; font-size:20px;" title="Поділитися">
+                🚀
+            </button>
+        `;
+
+        const certBtn = pct >= 50 ? `
+            <button class="btn-secondary" onclick="App.pages.quiz.downloadCertificate(${pct})" style="height:56px; flex:1; border-radius: 16px; gap:8px;">
+                ${Icons.book} Завантажити сертифікат
+            </button>
+        ` : '';
 
         container.innerHTML = `
              <div class="content-body" style="display:flex; align-items:center; justify-content:center; min-height:80vh;">
@@ -378,6 +390,11 @@ export const QuizPage = {
                          <div style="font-size:14px; font-weight:800; color:${color}; text-transform:uppercase; margin-bottom:12px; letter-spacing: 1px;">Ваш результат</div>
                          <div style="font-size:80px; font-weight:900; color:${color}; line-height:1; margin-bottom:12px;">${pct}%</div>
                          <div style="font-size:18px; font-weight:700; color:var(--text-main);">${QuizPage.score.toFixed(1)} з ${QuizPage.maxScore} балів</div>
+                    </div>
+
+                    <div style="display:flex; gap:16px; margin-bottom:24px;">
+                        ${certBtn}
+                        ${shareBtn}
                     </div>
 
                     ${reviewBtn}
@@ -441,5 +458,100 @@ export const QuizPage = {
                 <button class="btn-secondary" onclick="App.route('home')" style="width:100%; height:64px; margin-top:32px; font-size: 16px; border-radius: 20px;">Повернутися на головну</button>
             </div>
         `;
+    },
+
+    shareResult: (pct) => {
+        const shareData = {
+            title: 'MyQuiz Pro Результат',
+            text: `Я склав тест "${QuizPage.quiz.title}" на ${pct}%! Спробуй перевершити мене.`,
+            url: window.location.href
+        };
+
+        if (navigator.share) {
+            navigator.share(shareData)
+                .then(() => Toast.show('Успішно надіслано!'))
+                .catch((err) => console.log('Error sharing:', err));
+        } else {
+            navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
+            Toast.show('Посилання скопійовано в буфер обміну');
+        }
+    },
+
+    downloadCertificate: (pct) => {
+        Toast.show('Генерація сертифікату...');
+        
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const width = 1200;
+        const height = 800;
+        canvas.width = width;
+        canvas.height = height;
+
+        const gradient = ctx.createLinearGradient(0, 0, width, height);
+        gradient.addColorStop(0, '#4f46e5');
+        gradient.addColorStop(1, '#818cf8');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(40, 40, width - 80, height - 80);
+
+        ctx.strokeStyle = '#eef2ff';
+        ctx.lineWidth = 20;
+        ctx.beginPath();
+        ctx.arc(100, 100, 150, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(width - 100, height - 100, 150, 0, 2 * Math.PI);
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#1e293b';
+        
+        ctx.font = 'bold 60px "Inter", sans-serif';
+        ctx.fillText('СЕРТИФІКАТ', width / 2, 180);
+        
+        ctx.font = '30px "Inter", sans-serif';
+        ctx.fillStyle = '#64748b';
+        ctx.fillText('про успішне проходження тестування', width / 2, 240);
+
+        ctx.font = 'bold 70px "Inter", sans-serif';
+        ctx.fillStyle = '#4f46e5';
+        ctx.fillText(QuizPage.studentName, width / 2, 380);
+        
+        ctx.beginPath();
+        ctx.moveTo(width / 2 - 200, 410);
+        ctx.lineTo(width / 2 + 200, 410);
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        ctx.font = 'bold 40px "Inter", sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText(`Тест: "${QuizPage.quiz.title}"`, width / 2, 500);
+
+        ctx.font = 'bold 50px "Inter", sans-serif';
+        ctx.fillStyle = pct >= 80 ? '#10b981' : '#f59e0b';
+        ctx.fillText(`Результат: ${pct}%`, width / 2, 580);
+
+        ctx.font = '24px "Inter", sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        const date = new Date().toLocaleDateString('uk-UA');
+        ctx.fillText(`Дата видачі: ${date}`, width / 2, 700);
+        
+        ctx.font = 'bold 24px "Inter", sans-serif';
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillText('MyQuiz Pro • Education Platform', width / 2, 740);
+
+        const imgData = canvas.toDataURL('image/png');
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({
+            orientation: 'landscape',
+            unit: 'px',
+            format: [width, height]
+        });
+
+        pdf.addImage(imgData, 'PNG', 0, 0, width, height);
+        pdf.save(`Certificate_${QuizPage.studentName}.pdf`);
     }
 };
